@@ -1,75 +1,98 @@
-from tkinter import Frame, Label, LabelFrame, Button, Canvas
+import pygame
 
-from constants import *
+class Board():
+    """Board game"""
+    def __init__(self, surface, file, square_size, number_of_squares, size):
+        self.surface = surface
+        self.file = file
+        self.structure = []
+        self.square_size = square_size
+        self.number_of_squares = number_of_squares
+        self.size = size
 
-class Application(Frame):
-    def __init__(self, master=None):
-        super().__init__(master)
-        self.master = master
-        self.pack()
-        self.menu()
-        
-    def menu(self):
-        self.master.title('Gomoku')
-        Label(self, text='GOMOKU').pack(side='top', pady=20)
-        self.frame = LabelFrame(self, text='Rules')
-        Label(self.frame, text="The player who has drawn black pieces always plays first\nby placing his first piece on the central intersection of the checkerboard.\nWhite must then place his pawn on one of the 8 intersections adjacent to the Black pawn.\nBlack does the same, and so on, the object of the game being to take the opponent by speed and\nto be the first to line up 5 checkers of his color, in the three possible directions: vertical, horizontal or diagonal.").pack()
-        Button(self.frame, text='PLAY', command=self.play).pack(pady=40, ipadx=20, ipady=10)
-        self.frame.pack(side='top', padx=20, pady=10)
+    def generate(self):
+        """Generate the board in self.structure"""
+        self.structure = []
+        with open(self.file, "r") as file:
+            for line in file:
+                row = [square for square in line if square != '\n']
+                self.structure.append(row)
+    
+    def draw_lines(self, color=(0, 0, 0)):
+        for i in range(self.number_of_squares):
+            pygame.draw.line(self.surface, color, (self.square_size // 2 + self.square_size * i, self.square_size // 2), (self.square_size // 2 + self.square_size * i, self.size - self.square_size // 2))
+            pygame.draw.line(self.surface, color, (self.square_size // 2, self.square_size // 2 + self.square_size * i), (self.size - self.square_size // 2, self.square_size // 2 + self.square_size * i))
 
-    def play(self):
-        self.board = Board(self)
+    def show(self, color1=(0, 0, 0), color2=(255, 255, 255)):
+        for i in range(len(self.structure)):
+            for j in range(len(self.structure[i])):
+                if self.structure[i][j] == 'b':
+                    pygame.draw.circle(self.surface, color1, (self.square_size // 2 + j * self.square_size, self.square_size // 2 + i * self.square_size), self.square_size // 2)
+                elif self.structure[i][j] == 'w':
+                    pygame.draw.circle(self.surface, color2, (self.square_size // 2 + j * self.square_size, self.square_size // 2 + i * self.square_size), self.square_size // 2)
 
-class Board(Application):
-    """Create a checkered board of size nb_squares ** 2"""
-    def __init__(self, app):
-        self.player = 1
-        self.finished = False
-        self.first_token = True
-        self.nb_token_placed = 0
-        self.board = Canvas(app, width=board_size, height=board_size, background="#fb9d4e")
-        for i in range(square_size // 2, board_size - square_size // 2 + 1, square_size):
-            self.board.create_line(square_size / 2, i, board_size - square_size / 2, i)
-            self.board.create_line(i, square_size / 2, i, board_size - square_size / 2)
-        self.board.create_oval(nb_squares // 2 * 40 + 2, nb_squares // 2 * 40 + 2, nb_squares // 2 * 40 + 38, nb_squares // 2 * 40 + 38, outline='black', fill='black')
-        board_arr[nb_squares // 2][nb_squares // 2] = 'w'
-        self.board.pack(expand=True)
-        self.board.bind('<Button-1>', self.click)
+    def isValide(self, x, y):
+        x = int(round_number(x) // 40)
+        y = int(round_number(y) // 40)
+        return self.structure[y][x] == 'a'
 
-    def click(self, event):
-        """Draw a token on the nearest cross of the click"""
-        x, y = round(float(event.x - 20) / 40) * 40 + 20, round(float(event.y - 20) / 40) * 40 + 20
-        if board_arr[y // 40][x // 40] == 'e' and (board_arr[y // 40 - 1][x // 40] != 'e' or board_arr[y // 40 - 1][x // 40 - 1] != 'e' or board_arr[y // 40][x // 40 - 1] != 'e' or board_arr[y // 40 + 1][x // 40 - 1] != 'e' or board_arr[y // 40 + 1][x // 40] != 'e' or board_arr[y // 40 + 1][x // 40 + 1] != 'e' or board_arr[y // 40][x // 40 + 1] != 'e' or board_arr[y // 40 - 1][x // 40 + 1] != 'e'):
-            self.nb_token_placed += 1
-            if self.player == 0:
-                board_arr[y // 40][x // 40] = 'd'
-                self.board.create_oval(x - 18, y - 18, x + 18, y + 18, outline='black', fill='black')
-                self.player = 1
-            else:
-                board_arr[y // 40][x // 40] = 'w'
-                self.board.create_oval(x - 18, y - 18, x + 18, y + 18, outline='white', fill='white')
-                self.player = 0
-            self.board.pack()
-            self.isFinished(x, y)
-            if self.finished or self.nb_token_placed == nb_tokens_max:
-                self.board.bind('<Button-1>', self.r)
-                print(self.nb_token_placed)
-                print('finished')
-        return
+    def draw_token(self, x, y, player):
+        x = int(round_number(x) // 40)
+        y = int(round_number(y) // 40)
+        self.structure[y][x] = player
+        for i in range(-1, 2):
+            for j in range(-1, 2):
+                if self.structure[y + i][x + j] == 'e': 
+                    self.structure[y + i][x + j] = 'a'
 
-    def isFinished(self, j, i):
-        """Check if five token are aligned. j is x and i is y"""
-        j //= 40
-        i //= 40
-        a = board_arr[i][j]
-        if (i > 3 and board_arr[i - 1][j] == a and board_arr[i - 2][j] == a and board_arr[i - 3][j] == a and board_arr[i - 4][j] == a) \
-        or (j > 3 and board_arr[i][j - 1] == a and board_arr[i][j - 2] == a and board_arr[i][j - 3] == a and board_arr[i][j - 4] == a) \
-        or (i < nb_squares - 4 and board_arr[i + 1][j] == a and board_arr[i + 2][j] == a and board_arr[i + 3][j] == a and board_arr[i + 4][j] == a) \
-        or (j < nb_squares - 4 and board_arr[i][j + 1] == a and board_arr[i][j + 2] == a and board_arr[i][j + 3] == a and board_arr[i][j + 4] == a): # top left bottom right
-            self.finished = True
-            print(a)
-            print(i, j)
-            return
+    def isFinished(self,player):
+        s = self.structure
+        for i in range(self.number_of_squares):
+            for j in range(self.number_of_squares):
+                if s[i][j] == player:
+                    # top
+                    if i > 3:
+                        if s[i-1][j] == s[i-2][j] == s[i-3][j] == s[i-4][j]: return True
+                    # top left
+                    if i > 3 and j >= i:
+                        if s[i-1][j-1] == s[i-2][j-2] == s[i-3][j-3] == s[i-4][j-4]: return True
+                    # left
+                    if j > 3:
+                        if s[i][j-1] == s[i][j-2] == s[i][j-3] == s[i][j-4]: return True
+                    # bottom left
+                    if i < self.number_of_squares - 3 and j > 3:
+                        if s[i+1][j-1] == s[i+2][j-2] == s[i+3][j-3] == s[i+4][j-4]: return True
+                    # bottom
+                    if i < self.number_of_squares -3:
+                        if s[i+1][j] == s[i+2][j] == s[i+3][j] == s[i+4][j]: return True
+                    #bottom right
+                    if i < self.number_of_squares - 3 and j <= i:
+                        if s[i+1][j+1] == s[i+2][j+2] == s[i+3][j+3] == s[i+4][j+4]: return True
+                    # right
+                    if j < self.number_of_squares - 3:
+                        if s[i][j+1] == s[i][j+2] == s[i][+3] == s[i][+4]: return True
+                    # top right
+                    if i > 3 and j < self.number_of_squares - 3:
+                        if s[i-1][j+1] == s[i-2][j+2] == s[i-3][j+3] == s[i-4][j+4]: return True
+        return False
 
-    def r(self, *args):
-        return 0
+def round_number(n):
+    if n >= 0 and n < 40: return 20
+    elif n >= 40 and n < 80: return 60
+    elif n >= 80 and n < 120: return 100
+    elif n >= 120 and n < 160: return 140
+    elif n >= 160 and n < 200: return 180
+    elif n >= 200 and n < 240: return 220
+    elif n >= 240 and n < 280: return 260
+    elif n >= 280 and n < 320: return 300
+    elif n >= 320 and n < 360: return 340
+    elif n >= 360 and n < 400: return 380
+    elif n >= 400 and n < 440: return 420
+    elif n >= 440 and n < 480: return 460
+    elif n >= 480 and n < 520: return 500
+    elif n >= 520 and n < 560: return 540
+    elif n >= 560 and n < 600: return 580
+    elif n >= 600 and n < 640: return 620
+    elif n >= 640 and n < 680: return 640
+    elif n >= 680 and n < 720: return 700
+    elif n >= 720 and n <= 760: return 740
