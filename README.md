@@ -1,2 +1,2 @@
 # Gomoku
-Gomoku game with python
+Gomoku game using pygame
